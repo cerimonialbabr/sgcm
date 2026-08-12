@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b2c66">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SGCM">
+  <title>SGCM | Sistema de Gerenciamento de Cerimonial Militar</title>
+  <link rel="manifest" href="manifest.webmanifest?v=3.0.0">
+  <link rel="icon" href="assets/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="preconnect" href="https://drive.google.com">
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="dns-prefetch" href="//drive.google.com">
+  <link rel="stylesheet" href="styles.css?v=3.0.0">
+  <link rel="preload" href="modules/operation.js?v=3.0.0" as="script">
+  </head>
+<body>
+<div id="app" class="app-shell">
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="assets/logo.png" onerror="this.onerror=null;this.src='assets/icon-192.png'" alt="Logo SGCM">
+      <div class="brand-copy">
+        <div class="brand-name">Sistema de Gerenciamento de Cerimonial Militar</div>
+        <div class="brand-meta"><span class="brand-acronym">SGCM</span><span id="headerContext">Iniciando...</span></div>
+      </div>
+    </div>
+    <button class="mobile-menu-button" onclick="toggleDrawer(true)" aria-label="Abrir menu"><span class="menu-lines"></span></button>
+  </header>
+
+  <div id="contextBanner" class="context-banner hidden"></div>
+
+  <div class="workspace">
+    <aside class="desktop-sidebar" aria-label="Navegação principal">
+      <div class="nav-group-title">OPERAÇÃO</div>
+      <button data-nav-screen="evento" onclick="navigate('evento')">Evento</button>
+      <button data-nav-screen="recepcao" onclick="navigate('recepcao')">Recepção</button>
+      <button data-nav-screen="presentes" onclick="navigate('presentes')">Presentes</button>
+      <button data-nav-screen="familiares" onclick="navigate('familiares')">Familiares</button>
+      <div class="nav-separator"></div>
+      <div class="nav-group-title">CERIMONIAL</div>
+      <button data-nav-screen="cerimonias" onclick="navigate('cerimonias')">Cerimônias</button>
+      <button data-nav-screen="autoridades" onclick="navigate('autoridades')">Autoridades</button>
+      <button data-nav-screen="tribuna" onclick="navigate('tribuna')">Tribuna</button>
+      <button data-nav-screen="nominata" onclick="navigate('nominata')">Nominata</button>
+      <button data-nav-screen="estatisticas" onclick="navigate('estatisticas')">Estatísticas</button>
+      <button data-nav-screen="documentos" onclick="navigate('documentos')">Gerar arquivos</button>
+      <button onclick="window.open('dashboard.html','_blank')">Dashboard</button>
+      <button data-nav-screen="guia" onclick="navigate('guia')">Guia rápido</button>
+    </aside>
+
+    <main id="main" class="main"><div class="loading">Preparando SGCM...</div></main>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="Navegação operacional">
+    <button data-nav-screen="evento" onclick="navigate('evento')">Evento</button>
+    <button data-nav-screen="recepcao" onclick="navigate('recepcao')">Recepção</button>
+    <button data-nav-screen="presentes" onclick="navigate('presentes')">Presentes</button>
+    <button data-nav-screen="familiares" onclick="navigate('familiares')">Familiares</button>
+  </nav>
+
+  <footer class="app-footer">
+    <div>Desenvolvido por Maj Av Ranyer</div>
+    <div>Seção de Cerimonial Militar da Base Aérea de Brasília</div>
+    <div>Versão 3.0 - 2026</div>
+  </footer>
+</div>
+
+<div id="drawerBackdrop" class="backdrop hidden" onclick="toggleDrawer(false)"></div>
+<aside id="drawer" class="drawer">
+  <div class="drawer-head">
+    <div class="drawer-brand"><img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/icon-192.png'" alt="Logo SGCM"><div><strong>SGCM</strong><small>Sistema de Gerenciamento de Cerimonial Militar</small></div></div>
+    <button class="close-btn" onclick="toggleDrawer(false)">Fechar</button>
+  </div>
+  <button data-nav-screen="cerimonias" onclick="sideNavigate('cerimonias')">Cerimônias</button>
+  <button data-nav-screen="autoridades" onclick="sideNavigate('autoridades')">Autoridades</button>
+  <button data-nav-screen="tribuna" onclick="sideNavigate('tribuna')">Tribuna</button>
+  <button data-nav-screen="nominata" onclick="sideNavigate('nominata')">Nominata</button>
+  <button data-nav-screen="estatisticas" onclick="sideNavigate('estatisticas')">Estatísticas</button>
+  <button data-nav-screen="documentos" onclick="sideNavigate('documentos')">Gerar arquivos</button>
+  <button onclick="window.open('dashboard.html','_blank');toggleDrawer(false)">Dashboard</button>
+  <button data-nav-screen="guia" onclick="sideNavigate('guia')">Guia rápido</button>
+  <div class="drawer-version">Versão 3.0 - 2026</div>
+</aside>
+
+<div id="modalBackdrop" class="modal-backdrop hidden" onclick="closeModal(event)"><div id="modal" class="modal" onclick="event.stopPropagation()"></div></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="config.js?v=3.0.0" defer></script>
+<script src="bridge-client.js?v=3.0.0" defer></script>
+<script src="core.js?v=3.0.0" defer></script>
+<script>
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.0.0',{updateViaCache:'none'}).catch(()=>{}));}
+</script>
+</body>
+</html>
