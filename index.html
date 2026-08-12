@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SGCM">
   <title>SGCM | Sistema de Gerenciamento de Cerimonial Militar</title>
-  <link rel="manifest" href="manifest.webmanifest?v=3.0.0">
+  <link rel="manifest" href="manifest.webmanifest?v=3.0.1">
   <link rel="icon" href="assets/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="preconnect" href="https://drive.google.com">
   <link rel="preconnect" href="https://script.google.com">
   <link rel="dns-prefetch" href="//drive.google.com">
-  <link rel="stylesheet" href="styles.css?v=3.0.0">
-  <link rel="preload" href="modules/operation.js?v=3.0.0" as="script">
+  <link rel="stylesheet" href="styles.css?v=3.0.1">
+  <link rel="preload" href="modules/operation.js?v=3.0.1" as="script">
   </head>
 <body>
 <div id="app" class="app-shell">
@@ -89,11 +89,11 @@
 <div id="modalBackdrop" class="modal-backdrop hidden" onclick="closeModal(event)"><div id="modal" class="modal" onclick="event.stopPropagation()"></div></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="config.js?v=3.0.0" defer></script>
-<script src="bridge-client.js?v=3.0.0" defer></script>
-<script src="core.js?v=3.0.0" defer></script>
+<script src="config.js?v=3.0.1" defer></script>
+<script src="bridge-client.js?v=3.0.1" defer></script>
+<script src="core.js?v=3.0.1" defer></script>
 <script>
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.0.0',{updateViaCache:'none'}).catch(()=>{}));}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.0.1',{updateViaCache:'none'}).catch(()=>{}));}
 </script>
 </body>
 </html>

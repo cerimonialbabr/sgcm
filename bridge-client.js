@@ -1,6 +1,6 @@
-/* SGCM 3.0 — comunicação direta com Apps Script
- * O GitHub Pages hospeda a interface; um iframe invisível do Web App executa
- * as chamadas por google.script.run.
+/* SGCM 3.0 — Bridge direto Apps Script (build 3.0.1)
+ * O HTML Service do Apps Script pode usar uma camada interna de iframe.
+ * O handshake captura a janela interna real, onde google.script.run existe.
  */
 (function(){
   'use strict';
@@ -11,6 +11,8 @@
       this.parentOrigin=options.origin||location.origin;
       this.ready=false;
       this.iframe=null;
+      this.bridgeWindow=null;
+      this.token='';
       this.pending=new Map();
       this.seq=0;
       this.readyWaiters=[];
@@ -18,14 +20,28 @@
       window.addEventListener('message',this._onMessage);
     }
 
+    _newToken(){
+      const a=new Uint32Array(4);
+      try{crypto.getRandomValues(a);return Array.from(a,x=>x.toString(36)).join('');}
+      catch(e){return Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
+    }
+
     bridgeUrl(){
       const sep=this.webAppUrl.includes('?')?'&':'?';
-      return this.webAppUrl+sep+new URLSearchParams({bridge:'1',origin:this.parentOrigin,v:'3.0'}).toString();
+      return this.webAppUrl+sep+new URLSearchParams({
+        bridge:'1',
+        origin:this.parentOrigin,
+        token:this.token,
+        v:'3.0.1'
+      }).toString();
     }
 
     _createFrame(){
       if(this.iframe){try{this.iframe.remove();}catch(e){}}
       this.ready=false;
+      this.bridgeWindow=null;
+      this.token=this._newToken();
+
       const f=document.createElement('iframe');
       f.id='sgcmBridgeFrame';
       f.title='SGCM Bridge';
@@ -47,14 +63,22 @@
 
     _onMessage(ev){
       const m=ev.data||{};
-      if(!m||typeof m!=='object'||!this.iframe||ev.source!==this.iframe.contentWindow)return;
+      if(!m||typeof m!=='object'||!this.iframe)return;
+      if(!this.token||m.token!==this.token)return;
+
       if(m.type==='SGCM_BRIDGE_READY'){
-        this.ready=true;
+        // IMPORTANTE: em HTML Service, event.source pode ser a janela interna
+        // do sandbox e não iframe.contentWindow. Guardamos exatamente a janela
+        // que enviou READY e falamos diretamente com ela nas próximas chamadas.
+        this.bridgeWindow=ev.source;
+        this.ready=!!this.bridgeWindow;
         const waiters=this.readyWaiters.splice(0);
-        waiters.forEach(x=>x(true));
+        waiters.forEach(x=>x(this.ready));
         return;
       }
+
       if(m.type!=='SGCM_BRIDGE_RESULT'||!m.id)return;
+      if(this.bridgeWindow&&ev.source!==this.bridgeWindow)return;
       const p=this.pending.get(m.id);if(!p)return;
       this.pending.delete(m.id);clearTimeout(p.timer);
       if(!m.ok){p.reject(new Error(m.error||'Falha na comunicação com o Apps Script.'));return;}
@@ -65,9 +89,9 @@
       }catch(e){p.reject(new Error('Resposta inválida do Apps Script.'));}
     }
 
-    waitReady(timeoutMs=6500){
+    waitReady(timeoutMs=8000){
       this.start();
-      if(this.ready)return Promise.resolve(true);
+      if(this.ready&&this.bridgeWindow)return Promise.resolve(true);
       return new Promise(resolve=>{
         let done=false;
         const finish=value=>{if(done)return;done=true;clearTimeout(timer);resolve(value);};
@@ -77,7 +101,7 @@
     }
 
     request(action,args=[],timeoutMs=30000){
-      if(!this.ready||!this.iframe||!this.iframe.contentWindow){
+      if(!this.ready||!this.bridgeWindow){
         return Promise.reject(new Error('Bridge do Apps Script indisponível.'));
       }
       const id='B'+Date.now().toString(36)+(++this.seq).toString(36)+Math.random().toString(36).slice(2,7);
@@ -87,7 +111,13 @@
           reject(new Error('Tempo excedido na comunicação com o Apps Script.'));
         },timeoutMs);
         this.pending.set(id,{resolve,reject,timer});
-        this.iframe.contentWindow.postMessage({type:'SGCM_BRIDGE_CALL',id,action:String(action||''),args:Array.isArray(args)?args:[]},'*');
+        this.bridgeWindow.postMessage({
+          type:'SGCM_BRIDGE_CALL',
+          token:this.token,
+          id,
+          action:String(action||''),
+          args:Array.isArray(args)?args:[]
+        },'*');
       });
     }
   }

@@ -1,4 +1,4 @@
-const CACHE_NAME='sgcm-v3-shell-3.0.0';
+const CACHE_NAME='sgcm-v3-shell-3.0.1';
 const CORE=[
   './','./index.html','./styles.css','./bridge-client.js','./core.js','./config.js','./dashboard.html','./manifest.webmanifest',
   './modules/operation.js','./assets/logo.png','./assets/icon-192.png','./assets/icon-512.png'
