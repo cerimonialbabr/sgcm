@@ -1,4 +1,34 @@
 /* SGCM 3.0 — Tribuna */
+function tribunaCircleHtml(pos){
+  if(!pos || !pos.autoridade){
+    return '<div class="seat-circle" aria-hidden="true"></div>';
+  }
+
+  const a=pos.autoridade||{};
+  const id=String(a.ID_CONVIDADO||'')
+    .replace(/\\/g,'\\\\')
+    .replace(/'/g,"\\'");
+  const rotulo=esc(pos.rotulo||'');
+  const nome=esc([a.POSTO,a.NOME_GUERRA||a.NOME_COMPLETO].filter(Boolean).join(' '));
+  const funcao=pos.funcao?`<div class="seat-role">${esc(pos.funcao)}</div>`:'';
+  const presente=a.PRESENCA?' arrived':'';
+  const titulo=esc([
+    a.POSTO_EXTENSO||a.POSTO,
+    a.NOME_COMPLETO,
+    pos.funcao||''
+  ].filter(Boolean).join(' — '));
+
+  const interacao=id
+    ? ` onclick="openGuestOperationDetail('${id}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGuestOperationDetail('${id}');}"`
+    : '';
+
+  return `<div class="seat-circle${presente}" title="${titulo}"${interacao}>
+    <div class="order">${rotulo}</div>
+    <div class="seat-name">${nome}</div>
+    ${funcao}
+  </div>`;
+}
+
 function fitTribunaStage(){
   const vp=$('.tribuna-viewport'),stage=$('.tribuna-stage');if(!vp||!stage)return;
   const base=Number(stage.dataset.baseWidth)||stage.scrollWidth||1;
