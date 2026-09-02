@@ -121,6 +121,33 @@ async function openGuestOperationDetail(id){
 /* -------------------------------------------------------------------------- */
 /* ADICIONAR CONVIDADO / CADASTRAR NO BANCO                                   */
 /* -------------------------------------------------------------------------- */
+function addGuestIdentityKey(v){
+  return String(v||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z0-9]+/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function guestAlreadyInCeremony(authority){
+  if(!authority)return null;
+  const id=String(authority.ID_AUTORIDADE||'').trim();
+  const nameKey=addGuestIdentityKey(authority.NOME_COMPLETO);
+  return convidadosOperacao().find(g=>{
+    const sameId=id && String(g.ID_AUTORIDADE||'').trim()===id;
+    const sameName=nameKey && addGuestIdentityKey(g.NOME_COMPLETO)===nameKey;
+    return sameId||sameName;
+  })||null;
+}
+function addGuestAuthorityResultHtml(a){
+  const existing=guestAlreadyInCeremony(a);
+  const selected=!existing && state.addGuestSelectedAuthority===a.ID_AUTORIDADE;
+  const cls=existing?' already-in-ceremony':(selected?' selected':'');
+  const click=existing?'':` onclick="selectAuthorityForGuest('${a.ID_AUTORIDADE}')"`;
+  const accessible=existing?' aria-disabled="true"':` role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectAuthorityForGuest('${a.ID_AUTORIDADE}');}"`;
+  const badge=existing
+    ? '<span class="badge already">JÁ ESTÁ NA CERIMÔNIA</span>'
+    : `<span class="badge ${selected?'present':'active'}">${selected?'SELECIONADA':'SELECIONAR'}</span>`;
+  return `<div class="person-card selectable-authority${existing?'':' clickable'}${cls}"${click}${accessible}>${photoHtml(a)}<div class="grow"><div class="person-name">${esc((a.POSTO?a.POSTO+' ':'')+(a.NOME_GUERRA||a.NOME_COMPLETO))}</div><div class="person-sub">${esc(a.CARGO_ATUAL)}</div></div><div class="person-right">${badge}</div></div>`;
+}
 async function openAddGuest(preselectId=''){
   const c=contextCeremony(), guests=convidadosOperacao();
   const labels=eventOrderMap(guests);
@@ -131,20 +158,75 @@ async function openAddGuest(preselectId=''){
 async function searchAuthorityForGuest(){
   const q=$('#agSearch').value; if(q.length<2){$('#agResults').innerHTML='';return;}
   const page=await server('apiListarAutoridadesPagina',q,0,30);
-  $('#agResults').innerHTML=page.items.map(a=>`<div class="person-card clickable selectable-authority ${state.addGuestSelectedAuthority===a.ID_AUTORIDADE?'selected':''}" onclick="selectAuthorityForGuest('${a.ID_AUTORIDADE}')">${photoHtml(a)}<div class="grow"><div class="person-name">${esc((a.POSTO?a.POSTO+' ':'')+(a.NOME_GUERRA||a.NOME_COMPLETO))}</div><div class="person-sub">${esc(a.CARGO_ATUAL)}</div></div><div class="person-right"><span class="badge ${state.addGuestSelectedAuthority===a.ID_AUTORIDADE?'present':'active'}">${state.addGuestSelectedAuthority===a.ID_AUTORIDADE?'SELECIONADA':'SELECIONAR'}</span></div></div>`).join('')||'<div class="empty">Nenhuma autoridade encontrada.</div>';
+  $('#agResults').innerHTML=page.items.map(addGuestAuthorityResultHtml).join('')||'<div class="empty">Nenhuma autoridade encontrada.</div>';
 }
 async function selectAuthorityForGuest(id){
-  state.addGuestSelectedAuthority=id;
   const a=await server('apiObterAutoridade',id);
+  const existing=guestAlreadyInCeremony(a);
+  if(existing){
+    state.addGuestSelectedAuthority=null;
+    if($('#agSelected')) $('#agSelected').innerHTML=`<div class="notice"><b>Já está na cerimônia.</b> ${esc((a.POSTO?a.POSTO+' ':'')+(a.NOME_GUERRA||a.NOME_COMPLETO))} já consta na relação de convidados.</div>`;
+    if($('#agAddBtn')) $('#agAddBtn').disabled=true;
+    showToast('Esta autoridade já está na cerimônia.');
+    if($('#agSearch') && $('#agSearch').value.length>=2) await searchAuthorityForGuest();
+    return;
+  }
+  state.addGuestSelectedAuthority=id;
   if($('#agSelected')) $('#agSelected').innerHTML=`<div class="selected-authority">${photoHtml(a)}<div class="grow"><div class="small muted">AUTORIDADE SELECIONADA</div><div class="person-name">${esc((a.POSTO?a.POSTO+' ':'')+(a.NOME_GUERRA||a.NOME_COMPLETO))}</div><div class="person-sub">${esc(a.CARGO_ATUAL||a.NOME_COMPLETO)}</div></div></div>`;
   if($('#agAddBtn')) $('#agAddBtn').disabled=false;
   if($('#agSearch') && $('#agSearch').value.length>=2) await searchAuthorityForGuest();
 }
 async function confirmAddSelectedAuthority(){
+  if(state.addGuestSaving)return;
   const id=state.addGuestSelectedAuthority; if(!id){showToast('Selecione uma autoridade.');return;}
-  const c=contextCeremony();
-  await server('apiAdicionarConvidado',c.ID_CERIMONIA,{ID_AUTORIDADE:id,REFERENCIA_ID:$('#agRef').value,POSICAO:$('#agPos').value,STATUS_CONFIRMACAO:'PENDENTE'});
-  await reloadOperationalSnapshot({silent:true}); closeModal(); state.addGuestSelectedAuthority=null; showToast('Convidado adicionado.'); renderEvento();
+
+  const btn=$('#agAddBtn');
+  const textoAnterior=btn?btn.textContent:'ADICIONAR À CERIMÔNIA';
+  state.addGuestSaving=true;
+  if(btn){btn.disabled=true;btn.textContent='AGUARDE...';}
+  const selected=$('#agSelected');
+  if(selected)selected.insertAdjacentHTML('beforeend','<div id="agSavingNotice" class="small muted" style="margin-top:8px">Salvando convidado. Aguarde a confirmação.</div>');
+
+  try{
+    const localAuthority=state.addGuestSelectedAuthority
+      ? {ID_AUTORIDADE:state.addGuestSelectedAuthority}
+      : null;
+    const localExisting=localAuthority && convidadosOperacao().find(g=>String(g.ID_AUTORIDADE||'')===String(localAuthority.ID_AUTORIDADE||''));
+    if(localExisting){
+      const aviso=$('#agSavingNotice');if(aviso)aviso.remove();
+      state.addGuestSelectedAuthority=null;
+      if(selected)selected.innerHTML='<div class="notice"><b>Já está na cerimônia.</b> Esta autoridade já consta na relação de convidados.</div>';
+      if(btn){btn.disabled=true;btn.textContent=textoAnterior;}
+      showToast('Esta autoridade já está na cerimônia.');
+      return;
+    }
+
+    const c=contextCeremony();
+    const result=await server('apiAdicionarConvidado',c.ID_CERIMONIA,{ID_AUTORIDADE:id,REFERENCIA_ID:$('#agRef').value,POSICAO:$('#agPos').value,STATUS_CONFIRMACAO:'PENDENTE'});
+    await reloadOperationalSnapshot({silent:true});
+
+    if(result&&result._JA_EXISTIA_NA_CERIMONIA){
+      const aviso=$('#agSavingNotice');if(aviso)aviso.remove();
+      state.addGuestSelectedAuthority=null;
+      if(selected)selected.innerHTML='<div class="notice"><b>Já está na cerimônia.</b> A relação foi atualizada e nenhuma duplicidade foi criada.</div>';
+      if(btn){btn.disabled=true;btn.textContent=textoAnterior;}
+      if($('#agSearch')&&$('#agSearch').value.length>=2)await searchAuthorityForGuest();
+      showToast('Esta autoridade já está na cerimônia.');
+      return;
+    }
+
+    closeModal();
+    state.addGuestSelectedAuthority=null;
+    showToast('Convidado adicionado.');
+    renderEvento();
+  }catch(e){
+    const aviso=$('#agSavingNotice');if(aviso)aviso.remove();
+    if(btn){btn.disabled=false;btn.textContent=textoAnterior;}
+    showToast((e&&e.message)||'Não foi possível adicionar o convidado.');
+    throw e;
+  }finally{
+    state.addGuestSaving=false;
+  }
 }
 
 async function openRegisterGuestAuthority(id){
