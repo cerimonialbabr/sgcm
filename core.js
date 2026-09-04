@@ -354,7 +354,7 @@ const FEATURE_FILES={
   tribuna:'modules/tribuna.js?v=3.0.3',
   nominata:'modules/nominata.js?v=3.0.0',
   stats:'modules/stats.js?v=3.0.0',
-  documents:'modules/documents.js?v=3.0.0',
+  documents:'modules/documents.js?v=3.0.5',
   guide:'modules/guide.js?v=3.0.0'
 };
 const SCREEN_FEATURE={evento:'operation',recepcao:'operation',presentes:'operation',familiares:'operation',cerimonias:'ceremonies',autoridades:'authorities',tribuna:'tribuna',nominata:'nominata',estatisticas:'stats',documentos:'documents',guia:'guide'};
