@@ -70,8 +70,9 @@
       <div class="panel tv-stats"><div class="panel-title">ESTATÍSTICAS</div><div id="tvStats" class="tv-stats-grid"></div></div>
     </section>
   </main>
-  <script src="config.js?v=3.0.1"></script>
-  <script src="bridge-client.js?v=3.0.1"></script>
+  <script src="config.js?v=3.0.7"></script>
+  <script src="bridge-client.js?v=3.0.7"></script>
+  <script src="security.js?v=3.0.7"></script>
   <script>
     const $=s=>document.querySelector(s);
     const esc=s=>String(s??'').replace(/[&<>\'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -86,7 +87,8 @@
 
     async function initBridge(){
       if(typeof window.SGCMBridgeClient!=='function')throw new Error('Cliente do Bridge não foi carregado.');
-      bridge=new window.SGCMBridgeClient(apiUrl(),{origin:location.origin});
+      bridge=window.__SGCMSharedBridge||new window.SGCMBridgeClient(apiUrl(),{origin:location.origin});
+      window.__SGCMSharedBridge=bridge;
       const ok=await bridge.waitReady(6500);
       if(!ok)throw new Error('Bridge do Apps Script indisponível.');
     }
@@ -186,7 +188,7 @@
       }
     }
 
-    async function startDashboard(){loadCachedDashboard();try{await initBridge();}catch(e){$('#tvUpdated').textContent='Bridge indisponível — exibindo última sincronização';}refresh();}
+    async function startDashboard(){if(window.SGCMSecurityReady)await window.SGCMSecurityReady;loadCachedDashboard();try{await initBridge();}catch(e){$('#tvUpdated').textContent='Bridge indisponível — exibindo última sincronização';}refresh();}
     startDashboard();
   </script>
 </body>

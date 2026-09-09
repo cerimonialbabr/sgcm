@@ -35,7 +35,7 @@ const SGCM_READ_ACTIONS = new Set([
   'apiObterConvidado','apiObterConvidadoResumo','apiListarAutoridades','apiListarAutoridadesPagina',
   'apiObterAutoridade','apiListarFamiliares','apiObterTribuna','apiListarNominata','apiNominataPainel',
   'apiListarMensagensNominata','apiEstatisticas','apiListarGruposEstatistica',
-  'apiOpcoesEstatistica','apiDashboard','apiDashboardVersao','apiFotoBase64','apiFotosBase64Lote'
+  'apiOpcoesEstatistica','apiDashboard','apiDashboardVersao','apiFotoBase64','apiFotosBase64Lote','apiSegurancaStatus'
 ]);
 
 function apiUrl(){
@@ -44,7 +44,7 @@ function apiUrl(){
   return u;
 }
 
-let __sgcmBridge=null;
+let __sgcmBridge=window.__SGCMSharedBridge||null;
 const transportState={mode:'INICIANDO',lastError:'',lastChange:Date.now()};
 function setTransportMode(mode,error=''){transportState.mode=mode;transportState.lastError=String(error||'');transportState.lastChange=Date.now();}
 function transportLabel(){return transportState.mode==='BRIDGE'?'BRIDGE CONECTADO':transportState.mode==='OFFLINE'?'BRIDGE INDISPONÍVEL':'CONECTANDO';}
@@ -52,8 +52,10 @@ function transportLabel(){return transportState.mode==='BRIDGE'?'BRIDGE CONECTAD
 async function initBridgeTransport(timeoutMs=6500,forceRestart=false){
   try{
     if(typeof window.SGCMBridgeClient!=='function')throw new Error('Cliente do Bridge não foi carregado.');
-    if(!__sgcmBridge)__sgcmBridge=new window.SGCMBridgeClient(apiUrl(),{origin:location.origin});
-    else if(forceRestart)__sgcmBridge.restart();
+    if(!__sgcmBridge){
+      __sgcmBridge=window.__SGCMSharedBridge||new window.SGCMBridgeClient(apiUrl(),{origin:location.origin});
+      window.__SGCMSharedBridge=__sgcmBridge;
+    }else if(forceRestart)__sgcmBridge.restart();
     const ok=await __sgcmBridge.waitReady(timeoutMs);
     if(!ok)throw new Error('O Bridge do Apps Script não respondeu.');
     setTransportMode('BRIDGE');
@@ -351,11 +353,11 @@ const FEATURE_FILES={
   operation:'modules/operation.js?v=3.0.4',
   ceremonies:'modules/ceremonies.js?v=3.0.0',
   authorities:'modules/authorities.js?v=3.0.0',
-  tribuna:'modules/tribuna.js?v=3.0.3',
+  tribuna:'modules/tribuna.js?v=3.0.7',
   nominata:'modules/nominata.js?v=3.0.0',
   stats:'modules/stats.js?v=3.0.0',
   documents:'modules/documents.js?v=3.0.5',
-  guide:'modules/guide.js?v=3.0.0'
+  guide:'modules/guide.js?v=3.0.7'
 };
 const SCREEN_FEATURE={evento:'operation',recepcao:'operation',presentes:'operation',familiares:'operation',cerimonias:'ceremonies',autoridades:'authorities',tribuna:'tribuna',nominata:'nominata',estatisticas:'stats',documentos:'documents',guia:'guide'};
 const SCREEN_RENDERER={evento:'renderEvento',recepcao:'renderRecepcao',presentes:'renderPresentes',familiares:'renderFamiliares',cerimonias:'renderCerimonias',autoridades:'renderAutoridades',tribuna:'renderTribuna',nominata:'renderNominata',estatisticas:'renderEstatisticas',documentos:'renderDocumentos',guia:'renderGuia'};
@@ -382,6 +384,7 @@ async function ensureScreenFeature(screen){
 function rendererForScreen(screen){return window[SCREEN_RENDERER[screen]];}
 async function boot(){
   try{
+    if(window.SGCMSecurityReady)await window.SGCMSecurityReady;
     apiUrl();
     const cachedSnap=carregarSnapshotOperacionalCache();
     const cachedBoot=cacheGet('bootstrap',7*24*60*60*1000);
